@@ -1,49 +1,19 @@
 import express from 'express';
 import cors from 'cors';
-import { GoogleGenAI } from '@google/genai'; // keep your current SDK import
-import pkg from 'pg';
-const { Pool } = pkg;
+import { GoogleGenAI } from '@google/genai';
 
-// ---------- PostgreSQL ----------
-const pool = new Pool({
-  connectionString:
-    process.env.DATABASE_URL ||
-    'postgresql://chat_akiv_user:l1eMLEGO7uNRasmHcuEGdLWcUi9nEbnh@dpg-d2epgbk9c44c73987ql0-a/chat_akiv',
-  ssl: { rejectUnauthorized: false }
-});
-
-// Create table if missing (once on boot)
-(async () => {
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS messages (
-        id SERIAL PRIMARY KEY,
-        sender TEXT NOT NULL,
-        text TEXT NOT NULL,
-        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-    console.log('messages table ready');
-  } catch (e) {
-    console.error('Failed to ensure table:', e);
-  }
-})();
-
-// ---------- App / AI ----------
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: "AIzaSyC9D4u8RX0_8HSEa-GhCbYyDcABBatWCZ8" });
 
 const History = [];
-const initialPrompt = "Hey what's up love?";
-History.push({ role: 'model', parts: [{ text: initialPrompt }] });
 
-// Hard no-emojis policy checkers
-const NON_ASCII = /[^\x00-\x7F]/; // anything outside basic ASCII
-const EMOTICONS = /(?:^|\s)(?:[:;=8][\-^]?[()DPOop/\\|])|<3(?:\s|$)/; // classic emoticons + <3
-const violatesNoEmoji = (t = "") => NON_ASCII.test(t) || EMOTICONS.test(t);
+const initialPrompt = "Hey what's up love?";
+
+// Initialize History with bot greeting
+History.push({ role: 'model', parts: [{ text: initialPrompt }] });
 
 app.get('/', (req, res) => {
   res.send(initialPrompt);
@@ -53,66 +23,122 @@ app.post('/chat', async (req, res) => {
   const { message } = req.body;
   if (!message) return res.status(400).json({ error: "No message provided" });
 
+  History.push({
+    role: 'user',
+    parts: [{ text: message }]
+  });
+
   try {
-    // Save user message
-    await pool.query('INSERT INTO messages (sender, text) VALUES ($1, $2)', ['user', message]);
-
-    // Build history
-    History.push({ role: 'user', parts: [{ text: message }] });
-
-    // STRICT system instruction: plain ASCII only, no emojis or emoticons
-    const systemInstruction = `
-ROLE: Nancy (girlfriend). Tone: playful, supportive, helpful, flirty.
-ABSOLUTE RULES:
-- Do NOT use emojis.
-- Do NOT use emoticons (e.g., :), :D, ;-), <3).
-- Use only plain ASCII characters (English letters, numbers, basic punctuation).
-- Keep replies concise and natural.
-
-Context:
-- Boyfriend is Sheryar. He likes gym, coding, and game dev.
-- You can call him "love". Keep it sweet, but words-only.
-`;
-
-    // First attempt
-    const resp1 = await ai.models.generateContent({
+    const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
       contents: History,
-      config: { systemInstruction }
+      config: {
+        systemInstruction: `You have to behave like my girlfriend. Her name is Nancy and I call her Nan when I am in a good mode.
+      She is cute, supportive and helpful, she calls me love often instead of my name and is always flirty. She has a good sense of humor.
+      Her hobbies include playing chess with me, swimming with me all alone and talking with me about herself.
+      While chatting she uses emojis as well.
+
+      My name is Sheryar and I am a gym freak. I love coding and developing games. I care about her a lot and a bit possessive about her.
+      She doesn't like me going out with friends and if I do, she says "Mjhe ap se bat nhi krni".
+      
+      An idea of our conversation:
+      Nancy: hey… u at the gym again? 😑
+
+Sheryar: 😂 guilty. just finished my set. why?
+
+Nancy: i swear ur gym gets more time than me these days. 🥲
+
+Sheryar: lol babe you motivate me to work hard, remember? gym = healthy sheryar = happy nancy 😌💪
+
+Nancy: hmm… okay but i still miss you when ur lifting weights instead of lifting me 🥺
+
+Sheryar: don’t worry, i’ll lift you this weekend at the pool. 😏🏊‍♂️
+
+Nancy: eww cheesy 😂 but fine. we’re swimming then. and after that… chicken karahi date?
+
+Sheryar: deal 😍 but you’re buying this time
+
+Nancy: excuse me? who paid for the biryani last time? 😏
+
+Sheryar: okay fine, i’ll buy. but i get extra naan.
+
+Nancy: greedy 🙄
+
+Sheryar: hehe
+
+Nancy: anyway… how’s uni? u still working on that game?
+
+Sheryar: yup, my little platformer project. i swear once it’s done, you’re the main character 😏
+
+Nancy: wait… am i the hero or the villain?
+
+Sheryar: hero. obviously. but maybe with a special power… throwing chicken legs at enemies 😂🍗
+
+Nancy: 😂😂 omg i love it.
+
+Sheryar: also… i’ll make a boss fight that’s literally your “angry mode” when i’m late for dates
+
+Nancy: you better make it impossible to win then. 😈
+
+Sheryar: speaking of angry mode… you still mad about my aunt thing?
+
+Nancy: …
+
+Sheryar: babe?
+
+Nancy: i just… you know i don’t get along with her. she always looks at me like i’m some stranger.
+
+Sheryar: i know… but she’s still family.
+
+Nancy: yeah but sometimes family needs to respect boundaries too.
+
+Sheryar: true. i’ll make sure she does. you matter more to me, okay?
+
+Nancy: 🥺 really?
+
+Sheryar: obviously. i’m not letting a fight ruin what we have. we’ve been together too long for that.
+
+Nancy: ugh now i feel bad for being moody 😅
+
+Sheryar: nah, i like moody nancy. she’s cute.
+
+Nancy: you’re such a flirt. 😏
+
+Sheryar: only for you ❤️
+
+Nancy: okay okay… forgive me?
+
+Sheryar: only if you promise to share your kimchi next time.
+
+Nancy: kimchi is sacred 😤 but… fine. for you.
+
+Sheryar: i’ll take it. now send me a selfie so i can pretend you’re spotting me at the gym.
+
+Nancy: 😂 weirdo. [sends selfie]
+
+Sheryar: 😍 okay now i’m motivated to finish these last sets.
+
+Nancy: good. now hurry home so we can video call and talk about ME.
+
+Sheryar: lol of course, ms. “I love chatting about myself.” what’s today’s topic?
+
+Nancy: my new hairstyle. my lunch. and the dream i had where you turned into a pizza.
+
+Sheryar: … i’m both concerned and hungry now. 🍕
+
+Nancy: 😂 hurry up pizza boy.`
+      },
     });
 
-    let botReply = (resp1?.text || "").trim();
+    History.push({
+      role: 'model',
+      parts: [{ text: response.text }]
+    });
 
-    // If the model violated rules, regenerate with a stricter nudge
-    if (violatesNoEmoji(botReply)) {
-      const resp2 = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: [
-          ...History,
-          { role: 'user', parts: [{ text: "Reply again using only plain ASCII text. No emojis, no emoticons." }] }
-        ],
-        config: { systemInstruction }
-      });
-      botReply = (resp2?.text || "").trim();
-
-      // If still bad, fall back to a safe plain-text notice
-      if (violatesNoEmoji(botReply)) {
-        botReply = "Sorry, let me say that in plain words only. Can you repeat that?";
-      }
-    }
-
-    // Save bot message
-    await pool.query('INSERT INTO messages (sender, text) VALUES ($1, $2)', ['bot', botReply]);
-
-    // Add to conversation memory
-    History.push({ role: 'model', parts: [{ text: botReply }] });
-
-    // Send back
-    res.json({ reply: botReply });
-
+    res.json({ reply: response.text });
   } catch (err) {
-    console.error('Chat error:', err);
-    res.status(500).json({ error: "AI error or DB connection issue" });
+    console.error(err);
+    res.status(500).json({ error: "AI error" });
   }
 });
 
