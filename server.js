@@ -13,7 +13,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const ai = new GoogleGenAI({ apiKey: "YOUR_API_KEY" });
+const ai = new GoogleGenAI({ apiKey: "AIzaSyDyyzDuk2QCOT9ngHZgYBvGjEQXPqjeqU4" });
 
 const History = [];
 const initialPrompt = "Hey what's up love?";
