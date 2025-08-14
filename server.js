@@ -32,6 +32,7 @@ app.post('/chat', async (req, res) => {
   const { message } = req.body;
   if (!message) return res.status(400).json({ error: "No message provided" });
 
+  const botReply = response.text;
  // Save user's message
   await pool.query(
     'INSERT INTO messages (sender, text) VALUES ($1, $2)',
