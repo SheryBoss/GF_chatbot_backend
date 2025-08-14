@@ -2,6 +2,15 @@ import express from 'express';
 import cors from 'cors';
 import { GoogleGenAI } from '@google/genai';
 
+import pkg from 'pg';
+const { Pool } = pkg;
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || 'postgres://username:password@host:port/dbnamepostgresql://chat_akiv_user:l1eMLEGO7uNRasmHcuEGdLWcUi9nEbnh@dpg-d2epgbk9c44c73987ql0-a/chat_akiv',
+  ssl: { rejectUnauthorized: false }
+});
+
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -22,6 +31,12 @@ app.get('/', (req, res) => {
 app.post('/chat', async (req, res) => {
   const { message } = req.body;
   if (!message) return res.status(400).json({ error: "No message provided" });
+
+ // Save user's message
+  await pool.query(
+    'INSERT INTO messages (sender, text) VALUES ($1, $2)',
+    ['user', message]
+  );
 
   History.push({
     role: 'user',
@@ -129,6 +144,12 @@ Sheryar: … i’m both concerned and hungry now. 🍕
 Nancy: 😂 hurry up pizza boy.`
       },
     });
+
+     // Save bot's message
+    await pool.query(
+      'INSERT INTO messages (sender, text) VALUES ($1, $2)',
+      ['bot', botReply]
+    );
 
     History.push({
       role: 'model',
